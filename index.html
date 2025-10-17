@@ -228,8 +228,8 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-s
       zip.file("thumb_1200x630.jpg", dataURLToBlob(thumbDataUrl));
 
       // 🔥 버튼 이미지도 ZIP에 포함
-      const copyImg = await fetch("./copy.png").then(r => r.blob());
-      const payImg = await fetch("./kakaopay.png").then(r => r.blob());
+      const copyImg = await fetch("/copy.png").then(r => r.blob());
+      const payImg = await fetch("/kakaopay.png").then(r => r.blob());
       zip.file("copy.png", copyImg);
       zip.file("kakaopay.png", payImg);
 
