@@ -1,0 +1,73 @@
+<!-- 🔽 계좌정보 컴포넌트 -->
+<div id="accounts" style="margin-top:24px;">
+  <h2 style="text-align:center;">💳 계좌 안내</h2>
+  <div id="account-list" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;"></div>
+</div>
+
+<script>
+const accountsData = [
+  // 🔸 아래에 최대 4개까지 입력 가능
+  { name: "민병일", bank: "신한 110497044856", payUrl: "https://qr.kakaopay.com/Ej9GLFeXd" },
+  // { name: "김나레미", bank: "국민 123456789012", payUrl: "https://qr.kakaopay.com/xxxxxx" },
+  // { name: "홍길동", bank: "하나 333333333333", payUrl: "" },
+  // { name: "이준우", bank: "농협 777777777777", payUrl: "https://qr.kakaopay.com/yyyyyy" },
+];
+
+function renderAccounts() {
+  const container = document.getElementById("account-list");
+  container.innerHTML = "";
+
+  accountsData.filter(a => a.name && a.bank).forEach(acc => {
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.justifyContent = "space-between";
+    row.style.alignItems = "center";
+    row.style.background = "#f9fafb";
+    row.style.border = "1px solid #e5e7eb";
+    row.style.borderRadius = "12px";
+    row.style.padding = "10px 14px";
+
+    // 왼쪽 텍스트
+    const left = document.createElement("div");
+    left.innerHTML = `<strong>${acc.name}</strong><br><span style="font-size:14px;color:#374151">${acc.bank}</span>`;
+
+    // 오른쪽 버튼 영역
+    const right = document.createElement("div");
+    right.style.display = "flex";
+    right.style.gap = "8px";
+    right.style.alignItems = "center";
+
+    // 카카오페이 버튼
+    if (acc.payUrl) {
+      const payBtn = document.createElement("img");
+      payBtn.src = "kakaopay.png";
+      payBtn.style.height = "36px";
+      payBtn.style.cursor = "pointer";
+      payBtn.onclick = () => window.open(acc.payUrl, "_blank");
+      right.appendChild(payBtn);
+    }
+
+    // 복사 버튼
+    const copyBtn = document.createElement("img");
+    copyBtn.src = "copy.png";
+    copyBtn.style.height = "36px";
+    copyBtn.style.cursor = "pointer";
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(acc.bank).then(() => {
+        alert(`${acc.bank} 복사됨`);
+      });
+    };
+    right.appendChild(copyBtn);
+
+    row.appendChild(left);
+    row.appendChild(right);
+    container.appendChild(row);
+  });
+
+  // 만약 데이터가 없으면 섹션 숨기기
+  document.getElementById("accounts").style.display =
+    container.children.length === 0 ? "none" : "block";
+}
+
+renderAccounts();
+</script>
