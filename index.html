@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>돌잔치 초대장 생성기</title>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif; background:#fff7f7; margin:0; }
     .wrap { max-width: 900px; margin: 0 auto; padding: 20px; }
@@ -52,7 +51,6 @@
       <label>카카오톡 썸네일 이미지 (선택, 1200×630)</label>
       <input id="thumb" type="file" accept="image/*" />
 
-      <!-- 계좌 입력 필드 -->
       <h2 style="margin-top:20px;">💳 계좌 정보 (최대 4개)</h2>
       <p class="muted">입력하지 않으면 자동으로 숨겨집니다.</p>
       <div id="accountInputs" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;"></div>
@@ -62,7 +60,6 @@
         <button id="zipBtn" class="primary" disabled>ZIP 만들기</button>
       </div>
 
-      <!-- PREVIEW -->
       <div class="preview" id="preview">
         <div class="preview-hero"><div class="muted">여기에 미리보기</div></div>
         <h2 id="previewMainTitle" style="text-align:center"></h2>
@@ -82,7 +79,7 @@
     const cv = $("cv"), ctx = cv.getContext("2d");
     let mergedDataUrl = "";
 
-    // 계좌 입력 필드 4개 생성
+    // 계좌 입력 필드 생성
     for (let i = 0; i < 4; i++) {
       const div = document.createElement("div");
       div.classList.add("row");
@@ -92,8 +89,12 @@
           <input id="accName${i}" type="text" placeholder="예: 민병일" />
         </div>
         <div>
-          <label>계좌번호 및 은행 ${i+1}</label>
-          <input id="accBank${i}" type="text" placeholder="예: 신한 110497044856" />
+          <label>은행 이름 ${i+1}</label>
+          <input id="accBank${i}" type="text" placeholder="예: 신한" />
+        </div>
+        <div>
+          <label>계좌번호 ${i+1}</label>
+          <input id="accNum${i}" type="text" placeholder="예: 110497044856" />
         </div>
         <div style="grid-column:1/3;">
           <label>카카오페이 송금 URL ${i+1}</label>
@@ -102,7 +103,6 @@
       $("accountInputs").appendChild(div);
     }
 
-    // 파일 → 이미지 변환
     function fileToImage(fileOrBlob) {
       return new Promise((res, rej) => {
         const r = new FileReader();
@@ -147,6 +147,7 @@
       ctx.drawImage(i2, 0, 0, i2.width, i2.height, 0, h1, w, h2);
       return cv.toDataURL('image/png');
     }
+
     function escapeHtml(s='') {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
                       .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
@@ -158,14 +159,15 @@
       for (let i = 0; i < 4; i++) {
         const name = $(`accName${i}`).value.trim();
         const bank = $(`accBank${i}`).value.trim();
+        const num = $(`accNum${i}`).value.trim();
         const url = $(`accUrl${i}`).value.trim();
-        if (!name || !bank) continue;
+        if (!name || !bank || !num) continue;
         html += `
         <div style="display:flex;justify-content:space-between;align-items:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:10px 14px;margin-top:8px;">
-          <div><strong>${escapeHtml(name)}</strong><br><span style="font-size:14px;color:#374151">${escapeHtml(bank)}</span></div>
+          <div><strong>${escapeHtml(name)}</strong><br><span style="font-size:14px;color:#374151">${escapeHtml(bank)} ${escapeHtml(num)}</span></div>
           <div style="display:flex;gap:8px;align-items:center;">
             ${url ? `<img src="./junwoo1.png" style="height:36px;cursor:pointer;" onclick="window.open('${escapeHtml(url)}','_blank')">` : ""}
-            <img src="./junwoo2.png" style="height:36px;cursor:pointer;" onclick="navigator.clipboard.writeText('${escapeHtml(bank)}').then(()=>alert('${escapeHtml(bank)} 복사됨'))">
+            <img src="./junwoo2.png" style="height:36px;cursor:pointer;" onclick="navigator.clipboard.writeText('${escapeHtml(num)}').then(()=>alert('${escapeHtml(num)} 복사됨'))">
           </div>
         </div>`;
       }
@@ -184,7 +186,6 @@
       $("previewMainTitle").innerText = $("ogTitle").value || "초대장";
       $("previewSubTitle").innerText = $("ogDesc").value || "초대합니다.";
 
-      // 계좌 미리보기
       const existing = document.getElementById("accountPreview");
       if (existing) existing.remove();
       const wrapper = document.createElement("div");
@@ -192,7 +193,6 @@
       const list = renderAccountsToHTML();
       wrapper.innerHTML = list ? `<h3 style="text-align:center;">💳 계좌 안내</h3>${list}` : "";
       $("preview").appendChild(wrapper);
-
       $("zipBtn").disabled = false;
     }
 
@@ -215,12 +215,8 @@
       const inviteHtml = `<!doctype html><html lang="ko"><head>
 <meta property="og:title" content="${escapeHtml(ogTitle)}">
 <meta property="og:description" content="${escapeHtml(ogDesc)}">
-<meta property="og:type" content="website">
 <meta property="og:image" content="./thumb_1200x630.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(ogTitle)}</title>
 <style>
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;background:#fff7f7;margin:0;padding:16px}
@@ -239,7 +235,6 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-s
       zip.file("index.html", inviteHtml);
       zip.file("merged.png", dataURLToBlob(mergedDataUrl));
       zip.file("thumb_1200x630.jpg", dataURLToBlob(thumbDataUrl));
-
       const blob = await zip.generateAsync({ type: 'blob' });
       saveAs(blob, `${ogTitle}_초대장.zip`);
     }
