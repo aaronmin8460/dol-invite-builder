@@ -152,7 +152,6 @@
         if (!name || !bank || !num) continue;
         html += `
         <div style="display:flex;justify-content:space-between;align-items:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:10px 14px;margin-top:8px;">
-          <div><strong>${escapeHtml(name)}</strong><br><span style="font-size:14px;color:#374151">${escapeHtml(bank)} ${escapeHtml(num)}</span></div>
           <div style="display:flex;gap:8px;align-items:center;">
             ${url ? `<img src="/kakaopay.png" style="height:36px;cursor:pointer;" onclick="window.open('${escapeHtml(url)}','_blank')">` : ""}
             <img src="/copy.png" style="height:36px;cursor:pointer;" onclick="navigator.clipboard.writeText('${escapeHtml(num)}').then(()=>alert('${escapeHtml(num)} 복사됨'))">
