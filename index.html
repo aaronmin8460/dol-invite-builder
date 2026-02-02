@@ -5,18 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>돌잔치 초대장 생성기</title>
   <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif; background:#fff7f7; margin:0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+      background:#fff7f7;
+      margin:0;
+    }
     .wrap { max-width: 900px; margin: 0 auto; padding: 20px; }
-    .card { background:#fff; border:1px solid #eee; border-radius: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.06); padding:16px; }
+    .card {
+      background:#fff;
+      border:1px solid #eee;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.06);
+      padding:16px;
+    }
     .row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
     label { display:block; font-weight:600; margin-top:10px; }
-    input[type="text"], input[type="url"], input[type="file"] { width:100%; padding:10px; border-radius:12px; border:1px solid #ddd; }
+    input[type="text"], input[type="url"], input[type="file"] {
+      width:100%;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid #ddd;
+      box-sizing:border-box;
+    }
     .btns { display:flex; gap:10px; margin-top:14px; }
-    button { padding:12px 16px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; font-weight:600; }
+    button {
+      padding:12px 16px;
+      border-radius:12px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+      cursor:pointer;
+      font-weight:600;
+    }
     button.primary { background:#111827; color:#fff; border-color:#111827; }
-    .preview { margin-top:14px; background:#f8fafc; border:1px dashed #e5e7eb; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:12px; }
-    .preview-hero { width:100%; height:420px; display:flex; align-items:center; justify-content:center; border-radius:12px; overflow:hidden; }
-    .preview-hero img { max-width:100%; max-height:100%; object-fit:contain; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+
+    .preview {
+      margin-top:14px;
+      background:#f8fafc;
+      border:1px dashed #e5e7eb;
+      border-radius:12px;
+      padding:14px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    /* ✅ 미리보기 이미지 영역 + 버튼 오버레이 */
+    .preview-hero{
+      position:relative;
+      width:100%;
+      height:420px;
+      border-radius:12px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .preview-hero img{
+      width:100%;
+      height:100%;
+      object-fit:cover; /* 사진 위 버튼 좌표 잡기 쉬움 */
+      display:block;
+    }
+
+    /* ✅ “마음보내기” 버튼 스타일 */
+    .ctaBtn{
+      position:absolute;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:26px;              /* 버튼 위치 조절: 숫자만 바꾸면 됨 */
+      padding:14px 46px;
+      border-radius:999px;
+      border:none;
+      background:#ff5a3c;
+      color:#fff;
+      font-weight:800;
+      font-size:20px;
+      box-shadow:0 10px 24px rgba(255,90,60,.35);
+      cursor:pointer;
+      letter-spacing:-0.3px;
+    }
+    .ctaBtn:active { transform:translateX(-50%) scale(0.99); }
+
     .muted { color:#6b7280; font-size:13px; text-align:center; }
   </style>
 </head>
@@ -64,6 +132,10 @@
         <h2 id="previewMainTitle" style="text-align:center"></h2>
         <p id="previewSubTitle" class="muted"></p>
       </div>
+
+      <p class="muted" style="margin-top:10px;">
+        ※ copy.png / kakaopay.png 파일은 이 HTML과 같은 폴더에 있어야 ZIP 생성 시 같이 포함됩니다.
+      </p>
     </div>
   </div>
 
@@ -93,16 +165,24 @@
     function fileToImage(fileOrBlob) {
       return new Promise((res, rej) => {
         const r = new FileReader();
-        r.onload = () => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = r.result; };
-        r.onerror = rej; r.readAsDataURL(fileOrBlob);
+        r.onload = () => {
+          const img = new Image();
+          img.onload = () => res(img);
+          img.onerror = rej;
+          img.src = r.result;
+        };
+        r.onerror = rej;
+        r.readAsDataURL(fileOrBlob);
       });
     }
+
     function dataURLToBlob(dataURL) {
       const arr = dataURL.split(','), mime = arr[0].match(/:(.*?);/)[1];
       const bstr = atob(arr[1]); let n = bstr.length; const u8 = new Uint8Array(n);
       while(n--) u8[n] = bstr.charCodeAt(n);
       return new Blob([u8], { type: mime });
     }
+
     function drawCover(srcImg, w, h) {
       const sw = srcImg.width, sh = srcImg.height;
       const sr = sw/sh, dr = w/h;
@@ -114,6 +194,7 @@
       ctx.drawImage(srcImg, sx, sy, sW, sH, 0, 0, w, h);
       return cv.toDataURL('image/jpeg', 0.9);
     }
+
     async function mergeVerticallyOptional(fileTop, fileBottom) {
       if (fileTop && !fileBottom) {
         const i = await fileToImage(fileTop);
@@ -125,70 +206,92 @@
       }
       const i1 = await fileToImage(fileTop);
       const i2 = await fileToImage(fileBottom);
+
       const w = Math.max(i1.width, i2.width);
       const h1 = Math.round(i1.height * (w / i1.width));
       const h2 = Math.round(i2.height * (w / i2.width));
+
       cv.width = w; cv.height = h1 + h2;
-      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,cv.width,cv.height);
       ctx.drawImage(i1, 0, 0, i1.width, i1.height, 0, 0, w, h1);
       ctx.drawImage(i2, 0, 0, i2.width, i2.height, 0, h1, w, h2);
+
       return cv.toDataURL('image/png');
     }
 
     function escapeHtml(s='') {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
-                      .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-                      .replace(/'/g,'&#39;');
+      return String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
     }
 
-    // 계좌 정보 HTML 생성
+    // ✅ 계좌 정보 HTML 생성 (경로는 ./ 로)
     function renderAccountsToHTML() {
       let html = "";
       for (let i = 0; i < 4; i++) {
         const name = $(`accName${i}`).value.trim();
         const bank = $(`accBank${i}`).value.trim();
-        const num = $(`accNum${i}`).value.trim();
-        const url = $(`accUrl${i}`).value.trim();
+        const num  = $(`accNum${i}`).value.trim();
+        const url  = $(`accUrl${i}`).value.trim();
         if (!name || !bank || !num) continue;
+
         html += `
-        <div style="display:flex;justify-content:space-around;align-items:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;margin:8px auto 0;justify-self:center;padding: 5px 7px;">
-            ${url ? `<img src="/kakaopay.png" style="width:100px;cursor:pointer;" onclick="window.open('${escapeHtml(url)}','_blank')">` : ""}
-            <img src="/copy.png" style="width:140px;cursor:pointer;" onclick="navigator.clipboard.writeText('${escapeHtml(num)}').then(()=>alert('${escapeHtml(num)} 복사됨'))">
+        <div style="display:flex;justify-content:space-around;align-items:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;margin:8px auto 0;justify-self:center;padding: 5px 7px; gap:10px;">
+          ${url ? `<img src="./kakaopay.png" style="width:100px;cursor:pointer;" onclick="window.open('${escapeHtml(url)}','_blank')">` : ""}
+          <img src="./copy.png" style="width:140px;cursor:pointer;" onclick="navigator.clipboard.writeText('${escapeHtml(num)}').then(()=>alert('${escapeHtml(num)} 복사됨'))">
         </div>`;
       }
       return html;
     }
 
-    // 미리보기
+    // ✅ 미리보기
     async function onPreviewClick(){
       const f1 = $("top").files[0], f2 = $("bottom").files[0];
       if (!f1 && !f2) { alert('상단 사진을 선택하세요.'); return; }
+
       mergedDataUrl = await mergeVerticallyOptional(f1, f2);
 
       const hero = $("preview").querySelector(".preview-hero");
       hero.innerHTML = "";
-      const img = new Image(); img.src = mergedDataUrl; hero.appendChild(img);
+
+      const img = new Image();
+      img.src = mergedDataUrl;
+      hero.appendChild(img);
+
+      // ✅ “마음보내기” 버튼 (미리보기에서 송금 안내로 스크롤)
+      const btn = document.createElement("button");
+      btn.className = "ctaBtn";
+      btn.textContent = "마음보내기";
+      btn.onclick = () => {
+        document.getElementById("accountPreview")?.scrollIntoView({ behavior: "smooth" });
+      };
+      hero.appendChild(btn);
 
       $("previewMainTitle").innerText = $("ogTitle").value || "초대장";
       $("previewSubTitle").innerText = $("ogDesc").value || "초대합니다.";
 
       const existing = document.getElementById("accountPreview");
       if (existing) existing.remove();
+
       const wrapper = document.createElement("div");
       wrapper.id = "accountPreview";
       const list = renderAccountsToHTML();
       wrapper.innerHTML = list ? `<h3 style="text-align:center;">송금 안내</h3>${list}` : "";
       $("preview").appendChild(wrapper);
+
       $("zipBtn").disabled = false;
     }
 
-    // ZIP 생성
+    // ✅ ZIP 생성
     async function onZipClick(){
       if (!mergedDataUrl) { alert('먼저 미리보기를 해주세요.'); return; }
+
       const ogTitle = $("ogTitle").value || "초대장";
       const ogDesc  = $("ogDesc").value  || "초대합니다.";
 
-      // 썸네일
+      // 썸네일 생성 (업로드 없으면 merged로 자동 생성)
       let thumbDataUrl = '';
       const thumbFile = $("thumb").files[0];
       if (thumbFile) {
@@ -200,6 +303,8 @@
       }
 
       const accountHTML = renderAccountsToHTML();
+
+      // ✅ ZIP 안에 생성될 초대장 HTML (버튼은 이미지 위 오버레이 + #pay로 이동)
       const inviteHtml = `<!doctype html><html lang="ko"><head>
 <meta property="og:title" content="${escapeHtml(ogTitle)}">
 <meta property="og:description" content="${escapeHtml(ogDesc)}">
@@ -207,15 +312,43 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(ogTitle)}</title>
 <style>
-body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;background:#fff7f7;margin:0;padding:16px}
-.wrap{max-width:820px;margin:0 auto}
-.card{background:#fff;border:1px solid #eee;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.06);overflow:hidden}
-.hero{width:100%;display:block}
+  html{ scroll-behavior:smooth; }
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;background:#fff7f7;margin:0;padding:16px}
+  .wrap{max-width:820px;margin:0 auto}
+  .card{background:#fff;border:1px solid #eee;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.06);overflow:hidden}
+  .heroWrap{ position:relative; }
+  .hero{width:100%;display:block}
+  .ctaBtn{
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    bottom:26px;
+    padding:14px 46px;
+    border-radius:999px;
+    border:none;
+    background:#ff5a3c;
+    color:#fff;
+    font-weight:800;
+    font-size:20px;
+    box-shadow:0 10px 24px rgba(255,90,60,.35);
+    cursor:pointer;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    letter-spacing:-0.3px;
+  }
 </style>
 </head><body>
 <div class="wrap"><div class="card">
-  <img class="hero" src="./merged.png" alt="${escapeHtml(ogTitle)}">
-  ${accountHTML ? `<div style="padding:16px;"><h3 style="text-align:center;">송금 안내</h3>${accountHTML}</div>` : ""}
+
+  <div class="heroWrap">
+    <img class="hero" src="./merged.png" alt="${escapeHtml(ogTitle)}">
+    ${accountHTML ? `<a class="ctaBtn" href="#pay">마음보내기</a>` : ``}
+  </div>
+
+  ${accountHTML ? `<div id="pay" style="padding:16px;"><h3 style="text-align:center;">송금 안내</h3>${accountHTML}</div>` : ""}
+
 </div></div>
 </body></html>`;
 
@@ -224,9 +357,9 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-s
       zip.file("merged.png", dataURLToBlob(mergedDataUrl));
       zip.file("thumb_1200x630.jpg", dataURLToBlob(thumbDataUrl));
 
-      // 🔥 버튼 이미지도 ZIP에 포함
+      // ✅ 버튼 이미지도 ZIP에 포함 (현재 HTML 파일과 같은 폴더에 있어야 fetch됨)
       const copyImg = await fetch("./copy.png").then(r => r.blob());
-      const payImg = await fetch("./kakaopay.png").then(r => r.blob());
+      const payImg  = await fetch("./kakaopay.png").then(r => r.blob());
       zip.file("copy.png", copyImg);
       zip.file("kakaopay.png", payImg);
 
