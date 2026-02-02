@@ -11,12 +11,7 @@
     .row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
     label { display:block; font-weight:600; margin-top:10px; }
     input[type="text"], input[type="url"], input[type="file"], select {
-      width:100%;
-      padding:10px;
-      border-radius:12px;
-      border:1px solid #ddd;
-      box-sizing:border-box;
-      background:#fff;
+      width:100%; padding:10px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box; background:#fff;
     }
     .btns { display:flex; gap:10px; margin-top:14px; }
     button { padding:12px 16px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; font-weight:600; }
@@ -29,7 +24,7 @@
     .preview-hero { width:100%; height:420px; position:relative; border-radius:12px; overflow:hidden; background:#fff; }
     .preview-hero img { width:100%; height:100%; object-fit:cover; display:block; }
 
-    /* ✅ 버튼 스타일 */
+    /* ✅ “마음보내기” 버튼 스타일 */
     .ctaBtn{
       position:absolute;
       left:50%;
@@ -68,7 +63,7 @@
         </div>
       </div>
 
-      <!-- ✅ 버튼 포함 여부 셀렉터 추가 -->
+      <!-- ✅ 버튼 포함 여부 셀렉터 -->
       <div class="row">
         <div>
           <label>초대장 HTML에 “마음보내기” 버튼</label>
@@ -110,6 +105,10 @@
         <h2 id="previewMainTitle" style="text-align:center"></h2>
         <p id="previewSubTitle" class="muted"></p>
       </div>
+
+      <p class="muted" style="margin-top:10px;">
+        ※ copy.png / kakaopay.png 파일은 이 HTML과 같은 폴더에 있어야 ZIP 생성 시 같이 포함됩니다.
+      </p>
     </div>
   </div>
 
@@ -200,28 +199,28 @@
       return html;
     }
 
-    function shouldIncludeCta(accountHTML) {
-      const mode = $("ctaMode").value; // on/off
-      if (mode !== "on") return false;
-      // 송금 섹션이 없으면 버튼은 의미가 없어서 자동 제거
-      return !!accountHTML;
+    // ✅ 버튼 포함 여부는 셀렉터만 봄 (계좌 없어도 표시 가능)
+    function shouldIncludeCta() {
+      return $("ctaMode").value === "on";
     }
 
-    // 미리보기
+    // ✅ 미리보기
     async function onPreviewClick(){
       const f1 = $("top").files[0], f2 = $("bottom").files[0];
       if (!f1 && !f2) { alert('상단 사진을 선택하세요.'); return; }
+
       mergedDataUrl = await mergeVerticallyOptional(f1, f2);
 
       const hero = $("preview").querySelector(".preview-hero");
       hero.innerHTML = "";
-      const img = new Image(); img.src = mergedDataUrl; hero.appendChild(img);
 
-      // 먼저 계좌 렌더링 (버튼 포함 여부 판단에 필요)
-      const accountHTML = renderAccountsToHTML();
-      const includeCta = shouldIncludeCta(accountHTML);
+      const img = new Image(); img.src = mergedDataUrl;
+      hero.appendChild(img);
+
+      const includeCta = shouldIncludeCta();
       const ctaText = ($("ctaText").value || "마음보내기").trim();
 
+      // ✅ 버튼: 계좌 없어도 표시
       if (includeCta) {
         const btn = document.createElement("button");
         btn.className = "ctaBtn";
@@ -237,17 +236,27 @@
 
       const existing = document.getElementById("accountPreview");
       if (existing) existing.remove();
+
       const wrapper = document.createElement("div");
       wrapper.id = "accountPreview";
-      wrapper.innerHTML = accountHTML ? `<h3 style="text-align:center;">송금 안내</h3>${accountHTML}` : "";
+
+      const accountHTML = renderAccountsToHTML();
+
+      // ✅ 계좌가 없어도 “송금 안내 섹션”은 항상 존재 (버튼 스크롤 타겟)
+      wrapper.innerHTML = `
+        <h3 style="text-align:center;">송금 안내</h3>
+        ${accountHTML ? accountHTML : `<p class="muted">송금 정보가 아직 입력되지 않았습니다.</p>`}
+      `;
+
       $("preview").appendChild(wrapper);
 
       $("zipBtn").disabled = false;
     }
 
-    // ZIP 생성
+    // ✅ ZIP 생성
     async function onZipClick(){
       if (!mergedDataUrl) { alert('먼저 미리보기를 해주세요.'); return; }
+
       const ogTitle = $("ogTitle").value || "초대장";
       const ogDesc  = $("ogDesc").value  || "초대합니다.";
 
@@ -263,7 +272,7 @@
       }
 
       const accountHTML = renderAccountsToHTML();
-      const includeCta = shouldIncludeCta(accountHTML);
+      const includeCta = shouldIncludeCta();
       const ctaText = escapeHtml(($("ctaText").value || "마음보내기").trim());
 
       const inviteHtml = `<!doctype html><html lang="ko"><head>
@@ -299,14 +308,23 @@
     justify-content:center;
     letter-spacing:-0.3px;
   }` : ``}
+  .muted{ color:#6b7280; font-size:13px; text-align:center; }
 </style>
 </head><body>
 <div class="wrap"><div class="card">
+
   <div class="heroWrap">
     <img class="hero" src="./merged.png" alt="${escapeHtml(ogTitle)}">
     ${includeCta ? `<a class="ctaBtn" href="#pay">${ctaText}</a>` : ``}
   </div>
-  ${accountHTML ? `<div id="pay" style="padding:16px;"><h3 style="text-align:center;">송금 안내</h3>${accountHTML}</div>` : ""}
+
+  ${(includeCta || accountHTML) ? `
+    <div id="pay" style="padding:16px;">
+      <h3 style="text-align:center;">송금 안내</h3>
+      ${accountHTML ? accountHTML : `<p class="muted">송금 정보가 아직 입력되지 않았습니다.</p>`}
+    </div>
+  ` : ``}
+
 </div></div>
 </body></html>`;
 
@@ -315,7 +333,7 @@
       zip.file("merged.png", dataURLToBlob(mergedDataUrl));
       zip.file("thumb_1200x630.jpg", dataURLToBlob(thumbDataUrl));
 
-      // 버튼 이미지도 ZIP에 포함
+      // 버튼 이미지도 ZIP에 포함 (현재 HTML 파일과 같은 폴더에 있어야 fetch됨)
       const copyImg = await fetch("./copy.png").then(r => r.blob());
       const payImg = await fetch("./kakaopay.png").then(r => r.blob());
       zip.file("copy.png", copyImg);
