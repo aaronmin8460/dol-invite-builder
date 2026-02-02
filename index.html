@@ -13,7 +13,7 @@
     input[type="text"], input[type="url"], input[type="file"], select {
       width:100%; padding:10px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box; background:#fff;
     }
-    .btns { display:flex; gap:10px; margin-top:14px; }
+    .btns { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
     button { padding:12px 16px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; font-weight:600; }
     button.primary { background:#111827; color:#fff; border-color:#111827; }
     button:disabled { opacity:.5; cursor:not-allowed; }
@@ -25,32 +25,31 @@
     .preview-hero img { width:100%; height:100%; object-fit:cover; display:block; }
 
     /* ✅ “마음보내기” 버튼 스타일 */
-   .ctaBtn{
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  bottom:22px;
+    .ctaBtn{
+      position:absolute;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:22px;
 
-  /* ✅ 화면 크기에 따라 자동으로 줄어듦 */
-  font-size: clamp(14px, 4.2vw, 18px);
-  padding: clamp(10px, 3.2vw, 14px) clamp(22px, 8.5vw, 40px);
+      /* ✅ 화면 크기에 따라 자동으로 줄어듦 */
+      font-size: clamp(14px, 4.2vw, 18px);
+      padding: clamp(10px, 3.2vw, 14px) clamp(22px, 8.5vw, 40px);
 
-  border-radius:999px;
-  border:none;
-  background:#ff5a3c;
-  color:#fff;
-  font-weight:800;
-  box-shadow:0 10px 24px rgba(255,90,60,.35);
-  cursor:pointer;
-  letter-spacing:-0.3px;
+      border-radius:999px;
+      border:none;
+      background:#ff5a3c;
+      color:#fff;
+      font-weight:800;
+      box-shadow:0 10px 24px rgba(255,90,60,.35);
+      cursor:pointer;
+      letter-spacing:-0.3px;
 
-  /* ✅ “마음보내기”가 중간에서 쪼개지는 거 방지 */
-  white-space: nowrap;
+      /* ✅ “마음보내기”가 중간에서 쪼개지는 거 방지 */
+      white-space: nowrap;
 
-  /* ✅ 너무 좁은 폰에서도 버튼이 화면 밖으로 나가지 않게 */
-  max-width: calc(100% - 32px);
-}
-
+      /* ✅ 너무 좁은 폰에서도 버튼이 화면 밖으로 나가지 않게 */
+      max-width: calc(100% - 32px);
+    }
     .ctaBtn:active { transform:translateX(-50%) scale(0.99); }
 
     .muted { color:#6b7280; font-size:13px; text-align:center; }
@@ -190,7 +189,7 @@
                       .replace(/'/g,'&#39;');
     }
 
-    // 계좌 정보 HTML 생성
+    // 계좌 정보 HTML 생성 (송금 정보가 하나도 없으면 "" 반환)
     function renderAccountsToHTML() {
       let html = "";
       for (let i = 0; i < 4; i++) {
@@ -209,7 +208,7 @@
       return html;
     }
 
-    // ✅ 버튼 포함 여부는 셀렉터만 봄 (계좌 없어도 표시 가능)
+    // ✅ 버튼 포함 여부는 셀렉터만 봄
     function shouldIncludeCta() {
       return $("ctaMode").value === "on";
     }
@@ -230,13 +229,14 @@
       const includeCta = shouldIncludeCta();
       const ctaText = ($("ctaText").value || "마음보내기").trim();
 
-      // ✅ 버튼: 계좌 없어도 표시
+      // ✅ 버튼: 계좌 없어도 표시 (하지만 스크롤 타겟이 없으면 아무것도 안 함)
       if (includeCta) {
         const btn = document.createElement("button");
         btn.className = "ctaBtn";
         btn.textContent = ctaText;
         btn.onclick = () => {
-          document.getElementById("accountPreview")?.scrollIntoView({ behavior: "smooth" });
+          const target = document.getElementById("accountPreview");
+          if (target) target.scrollIntoView({ behavior: "smooth" });
         };
         hero.appendChild(btn);
       }
@@ -244,21 +244,22 @@
       $("previewMainTitle").innerText = $("ogTitle").value || "초대장";
       $("previewSubTitle").innerText = $("ogDesc").value || "초대합니다.";
 
+      // 기존 섹션 제거
       const existing = document.getElementById("accountPreview");
       if (existing) existing.remove();
 
-      const wrapper = document.createElement("div");
-      wrapper.id = "accountPreview";
-
       const accountHTML = renderAccountsToHTML();
 
-      // ✅ 계좌가 없어도 “송금 안내 섹션”은 항상 존재 (버튼 스크롤 타겟)
-      wrapper.innerHTML = `
-        <h3 style="text-align:center;">송금 안내</h3>
-        ${accountHTML ? accountHTML : `<p class="muted">송금 정보가 아직 입력되지 않았습니다.</p>`}
-      `;
-
-      $("preview").appendChild(wrapper);
+      // ✅ 송금 정보가 있을 때만 “송금 안내” 섹션 표시
+      if (accountHTML.trim().length > 0) {
+        const wrapper = document.createElement("div");
+        wrapper.id = "accountPreview";
+        wrapper.innerHTML = `
+          <h3 style="text-align:center;">송금 안내</h3>
+          ${accountHTML}
+        `;
+        $("preview").appendChild(wrapper);
+      }
 
       $("zipBtn").disabled = false;
     }
@@ -282,6 +283,8 @@
       }
 
       const accountHTML = renderAccountsToHTML();
+      const hasAccounts = accountHTML.trim().length > 0;
+
       const includeCta = shouldIncludeCta();
       const ctaText = escapeHtml(($("ctaText").value || "마음보내기").trim());
 
@@ -317,6 +320,8 @@
     align-items:center;
     justify-content:center;
     letter-spacing:-0.3px;
+    white-space:nowrap;
+    max-width:calc(100% - 32px);
   }` : ``}
   .muted{ color:#6b7280; font-size:13px; text-align:center; }
 </style>
@@ -325,13 +330,13 @@
 
   <div class="heroWrap">
     <img class="hero" src="./merged.png" alt="${escapeHtml(ogTitle)}">
-    ${includeCta ? `<a class="ctaBtn" href="#pay">${ctaText}</a>` : ``}
+    ${includeCta ? `<a class="ctaBtn" href="${hasAccounts ? '#pay' : '#'}" ${hasAccounts ? '' : 'onclick="return false;"'}>${ctaText}</a>` : ``}
   </div>
 
-  ${(includeCta || accountHTML) ? `
+  ${hasAccounts ? `
     <div id="pay" style="padding:16px;">
       <h3 style="text-align:center;">송금 안내</h3>
-      ${accountHTML ? accountHTML : `<p class="muted">송금 정보가 아직 입력되지 않았습니다.</p>`}
+      ${accountHTML}
     </div>
   ` : ``}
 
