@@ -133,4 +133,331 @@
   <canvas id="cv" style="display:none"></canvas>
 
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://c
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+  <script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const $ = (id) => document.getElementById(id);
+    const cv = $("cv"), ctx = cv.getContext("2d");
+    let mergedDataUrl = "";
+
+    // 계좌 입력 필드 생성
+    for (let i = 0; i < 4; i++) {
+      const div = document.createElement("div");
+      div.classList.add("row");
+      div.innerHTML = `
+        <div><label>받는 사람 이름 ${i+1}</label><input id="accName${i}" type="text" placeholder="예: 민병일" /></div>
+        <div><label>은행 이름 ${i+1}</label><input id="accBank${i}" type="text" placeholder="예: 신한" /></div>
+        <div><label>계좌번호 ${i+1}</label><input id="accNum${i}" type="text" placeholder="예: 110497044856" /></div>
+        <div style="grid-column:1/3;"><label>카카오페이 송금 URL ${i+1}</label><input id="accUrl${i}" type="url" placeholder="예: https://qr.kakaopay.com/..." /></div>`;
+      $("accountInputs").appendChild(div);
+    }
+
+    function fileToImage(fileOrBlob) {
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = r.result; };
+        r.onerror = rej; r.readAsDataURL(fileOrBlob);
+      });
+    }
+    function dataURLToBlob(dataURL) {
+      const arr = dataURL.split(','), mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]); let n = bstr.length; const u8 = new Uint8Array(n);
+      while(n--) u8[n] = bstr.charCodeAt(n);
+      return new Blob([u8], { type: mime });
+    }
+    function drawCover(srcImg, w, h) {
+      const sw = srcImg.width, sh = srcImg.height;
+      const sr = sw/sh, dr = w/h;
+      let sx, sy, sW, sH;
+      if (sr > dr) { sH = sh; sW = sH*dr; sx = (sw-sW)/2; sy = 0; }
+      else { sW = sw; sH = sW/dr; sx = 0; sy = (sh-sH)/2; }
+      cv.width = w; cv.height = h;
+      ctx.clearRect(0,0,w,h);
+      ctx.drawImage(srcImg, sx, sy, sW, sH, 0, 0, w, h);
+      return cv.toDataURL('image/jpeg', 0.9);
+    }
+    async function mergeVerticallyOptional(fileTop, fileBottom) {
+      if (fileTop && !fileBottom) { const i = await fileToImage(fileTop); return i.src; }
+      if (!fileTop && fileBottom) { const i = await fileToImage(fileBottom); return i.src; }
+      const i1 = await fileToImage(fileTop);
+      const i2 = await fileToImage(fileBottom);
+      const w = Math.max(i1.width, i2.width);
+      const h1 = Math.round(i1.height * (w / i1.width));
+      const h2 = Math.round(i2.height * (w / i2.width));
+      cv.width = w; cv.height = h1 + h2;
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+      ctx.drawImage(i1, 0, 0, i1.width, i1.height, 0, 0, w, h1);
+      ctx.drawImage(i2, 0, 0, i2.width, i2.height, 0, h1, w, h2);
+      return cv.toDataURL('image/png');
+    }
+
+    function escapeHtml(s='') {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                      .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+                      .replace(/'/g,'&#39;');
+    }
+
+    // ✅ 출력용: 첫 번째 유효 계좌(이름+은행+계좌번호) 찾기
+    function getFirstAccount() {
+      for (let i = 0; i < 4; i++) {
+        const name = $(`accName${i}`).value.trim();
+        const bank = $(`accBank${i}`).value.trim();
+        const num  = $(`accNum${i}`).value.trim();
+        const url  = $(`accUrl${i}`).value.trim();
+        if (name && bank && num) return { name, bank, num, url };
+      }
+      return null;
+    }
+
+    // ✅ 클립보드 복사(사파리/권한 이슈 대비 fallback 포함)
+    async function copyToClipboard(text) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        }
+        alert(text + " 복사됨");
+      } catch (e) {
+        alert("복사 실패: 브라우저 권한/보안(https) 확인해주세요.");
+      }
+    }
+
+    // 계좌 정보 HTML 생성 (송금 정보가 하나도 없으면 "" 반환)
+    function renderAccountsToHTML() {
+      let html = "";
+      for (let i = 0; i < 4; i++) {
+        const name = $(`accName${i}`).value.trim();
+        const bank = $(`accBank${i}`).value.trim();
+        const num = $(`accNum${i}`).value.trim();
+        const url = $(`accUrl${i}`).value.trim();
+        if (!name || !bank || !num) continue;
+
+        html += `
+        <div style="display:flex;justify-content:space-around;align-items:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;margin:8px auto 0;justify-self:center;padding: 5px 7px; gap:10px;">
+            ${url ? `<img src="./kakaopay.png" style="width:100px;cursor:pointer;" onclick="window.open('${escapeHtml(url)}','_blank')">` : ""}
+            <img src="./copy.png" style="width:140px;cursor:pointer;" onclick="copyTextInline('${escapeHtml(bank)} ${escapeHtml(num)} ${escapeHtml(name)}')">
+        </div>`;
+      }
+      return html;
+    }
+
+    // ✅ 미리보기/생성된 index.html 둘 다에서 쓰려고 전역 함수로 노출 (inline onclick용)
+    window.copyTextInline = (t) => copyToClipboard(String(t));
+
+    // ✅ 버튼 포함 여부 / 송금안내 섹션 표시 여부
+    function shouldIncludeCta() { return $("ctaMode").value === "on"; }
+    function shouldShowPaySection() { return $("paySectionMode").value === "on"; }
+
+    // ✅ 미리보기
+    async function onPreviewClick(){
+      const f1 = $("top").files[0], f2 = $("bottom").files[0];
+      if (!f1 && !f2) { alert('상단 사진을 선택하세요.'); return; }
+
+      mergedDataUrl = await mergeVerticallyOptional(f1, f2);
+
+      const hero = $("preview").querySelector(".preview-hero");
+      hero.innerHTML = "";
+
+      const img = new Image(); img.src = mergedDataUrl;
+      hero.appendChild(img);
+
+      const includeCta = shouldIncludeCta();
+      const showPaySection = shouldShowPaySection();
+      const ctaText = ($("ctaText").value || "마음보내기").trim();
+
+      // ✅ CTA 버튼: 클릭 시 "첫 번째 유효 계좌정보 복사" + (송금 섹션이 있으면) 스크롤
+      if (includeCta) {
+        const btn = document.createElement("button");
+        btn.className = "ctaBtn";
+        btn.textContent = ctaText;
+        btn.onclick = async () => {
+          const first = getFirstAccount();
+          if (first) {
+            await copyToClipboard(`${first.bank} ${first.num} ${first.name}`);
+          }
+          if (showPaySection) {
+            const target = document.getElementById("accountPreview");
+            if (target) target.scrollIntoView({ behavior: "smooth" });
+          }
+        };
+        hero.appendChild(btn);
+      }
+
+      $("previewMainTitle").innerText = $("ogTitle").value || "초대장";
+      $("previewSubTitle").innerText = $("ogDesc").value || "초대합니다.";
+
+      // 기존 섹션 제거
+      const existing = document.getElementById("accountPreview");
+      if (existing) existing.remove();
+
+      const accountHTML = renderAccountsToHTML();
+
+      // ✅ 송금안내 섹션: showPaySection=on 이고, 계좌가 있을 때만 표시
+      if (showPaySection && accountHTML.trim().length > 0) {
+        const wrapper = document.createElement("div");
+        wrapper.id = "accountPreview";
+        wrapper.innerHTML = `
+          <h3 style="text-align:center;">송금 안내</h3>
+          ${accountHTML}
+        `;
+        $("preview").appendChild(wrapper);
+      }
+
+      $("zipBtn").disabled = false;
+    }
+
+    // ✅ ZIP 생성
+    async function onZipClick(){
+      if (!mergedDataUrl) { alert('먼저 미리보기를 해주세요.'); return; }
+
+      const ogTitle = $("ogTitle").value || "초대장";
+      const ogDesc  = $("ogDesc").value  || "초대합니다.";
+
+      // 썸네일
+      let thumbDataUrl = '';
+      const thumbFile = $("thumb").files[0];
+      if (thumbFile) {
+        const thImg = await fileToImage(thumbFile);
+        thumbDataUrl = drawCover(thImg, 1200, 630);
+      } else {
+        const mImg = await fileToImage(dataURLToBlob(mergedDataUrl));
+        thumbDataUrl = drawCover(mImg, 1200, 630);
+      }
+
+      const accountHTML = renderAccountsToHTML();
+      const hasAccounts = accountHTML.trim().length > 0;
+
+      const includeCta = shouldIncludeCta();
+      const showPaySection = shouldShowPaySection();
+
+      const ctaText = escapeHtml(($("ctaText").value || "마음보내기").trim());
+
+      // ✅ 첫 번째 유효 계좌정보(버튼 복사용)
+      const first = getFirstAccount();
+      const firstPayText = first ? `${first.bank} ${first.num} ${first.name}` : "";
+      const HAS_PAY_SECTION = (showPaySection && hasAccounts);
+
+      const inviteHtml = `<!doctype html><html lang="ko"><head>
+<meta property="og:title" content="${escapeHtml(ogTitle)}">
+<meta property="og:description" content="${escapeHtml(ogDesc)}">
+<meta property="og:image" content="./thumb_1200x630.jpg">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(ogTitle)}</title>
+<style>
+  html{ scroll-behavior:smooth; }
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;background:#fff7f7;margin:0;padding:16px}
+  .wrap{max-width:820px;margin:0 auto}
+  .card{background:#fff;border:1px solid #eee;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.06);overflow:hidden}
+  .heroWrap{ position:relative; }
+  .hero{width:100%;display:block}
+
+  ${includeCta ? `.ctaBtn{
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    bottom: clamp(10px, 2.4vw, 18px);
+
+    font-size: clamp(14px, 4.2vw, 18px);
+    padding: clamp(10px, 3.0vw, 13px) clamp(22px, 8.5vw, 40px);
+
+    border-radius:999px;
+    border:none;
+    background:#ff5a3c;
+    color:#fff;
+    font-weight:800;
+    box-shadow:0 10px 24px rgba(255,90,60,.30);
+    cursor:pointer;
+    letter-spacing:-0.3px;
+    white-space:nowrap;
+    max-width:calc(100% - 32px);
+  }` : ``}
+
+  .muted{ color:#6b7280; font-size:13px; text-align:center; }
+</style>
+</head><body>
+<div class="wrap"><div class="card">
+
+  <div class="heroWrap">
+    <img class="hero" src="./merged.png" alt="${escapeHtml(ogTitle)}">
+    ${includeCta ? `<button class="ctaBtn" type="button" onclick="ctaClick()">${ctaText}</button>` : ``}
+  </div>
+
+  ${HAS_PAY_SECTION ? `
+    <div id="pay" style="padding:16px;">
+      <h3 style="text-align:center;">송금 안내</h3>
+      ${accountHTML}
+    </div>
+  ` : `` [{__REMOVE__}]}
+
+</div></div>
+
+<script>
+  const FIRST_PAY_TEXT = ${JSON.stringify(firstPayText)};
+  const HAS_PAY_SECTION = ${JSON.stringify(HAS_PAY_SECTION)};
+
+  async function copyToClipboard(text){
+    try{
+      if (navigator.clipboard && window.isSecureContext){
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position='fixed';
+        ta.style.left='-9999px';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      alert(text + " 복사됨");
+    }catch(e){
+      alert("복사 실패: 브라우저 권한/보안(https) 확인해주세요.");
+    }
+  }
+
+  function ctaClick(){
+    // ✅ 1) 첫 번째 계좌 복사
+    if (FIRST_PAY_TEXT){
+      copyToClipboard(FIRST_PAY_TEXT);
+    }
+    // ✅ 2) 송금 섹션이 표시되는 설정이면 그쪽으로 스크롤
+    if (HAS_PAY_SECTION){
+      const el = document.getElementById('pay');
+      if (el) el.scrollIntoView({behavior:'smooth'});
+    }
+  }
+</script>
+
+</body></html>`.replace(' [{__REMOVE__}]',''); // 템플릿 편집 흔적 제거용
+
+      const zip = new JSZip();
+      zip.file("index.html", inviteHtml);
+      zip.file("merged.png", dataURLToBlob(mergedDataUrl));
+      zip.file("thumb_1200x630.jpg", dataURLToBlob(thumbDataUrl));
+
+      // 버튼 이미지도 ZIP에 포함 (현재 HTML 파일과 같은 폴더에 있어야 fetch됨)
+      const copyImg = await fetch("./copy.png").then(r => r.blob());
+      const payImg = await fetch("./kakaopay.png").then(r => r.blob());
+      zip.file("copy.png", copyImg);
+      zip.file("kakaopay.png", payImg);
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      saveAs(blob, `${ogTitle}_초대장.zip`);
+    }
+
+    $("previewBtn").addEventListener("click", onPreviewClick);
+    $("zipBtn").addEventListener("click", onZipClick);
+  });
+  </script>
+</body>
+</html>
