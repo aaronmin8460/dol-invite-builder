@@ -11,51 +11,44 @@
     .row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
     label { display:block; font-weight:600; margin-top:10px; }
     input[type="text"], input[type="url"], input[type="file"], select {
-      width:100%; padding:10px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box; background:#fff;
+      width:100%;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid #ddd;
+      box-sizing:border-box;
+      background:#fff;
     }
-    .btns { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+    .btns { display:flex; gap:10px; margin-top:14px; }
     button { padding:12px 16px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; font-weight:600; }
     button.primary { background:#111827; color:#fff; border-color:#111827; }
     button:disabled { opacity:.5; cursor:not-allowed; }
 
     .preview { margin-top:14px; background:#f8fafc; border:1px dashed #e5e7eb; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:12px; }
 
-    /* 미리보기 이미지 영역 */
+    /* ✅ 미리보기 이미지 영역 + 버튼 오버레이 */
     .preview-hero { width:100%; height:420px; position:relative; border-radius:12px; overflow:hidden; background:#fff; }
     .preview-hero img { width:100%; height:100%; object-fit:cover; display:block; }
 
-    /* CTA 버튼: 모바일에서 너무 위로 뜨지 않게 */
+    /* ✅ 버튼 스타일 */
     .ctaBtn{
       position:absolute;
       left:50%;
       transform:translateX(-50%);
-      bottom: clamp(10px, 2.4vw, 18px);
-      font-size: clamp(14px, 4.2vw, 18px);
-      padding: clamp(10px, 3.0vw, 13px) clamp(22px, 8.5vw, 40px);
+      bottom:26px;              /* 버튼 위치 조절 */
+      padding:14px 46px;
       border-radius:999px;
       border:none;
       background:#ff5a3c;
       color:#fff;
       font-weight:800;
-      box-shadow:0 10px 24px rgba(255,90,60,.30);
+      font-size:20px;
+      box-shadow:0 10px 24px rgba(255,90,60,.35);
       cursor:pointer;
       letter-spacing:-0.3px;
-      white-space: nowrap;
-      max-width: calc(100% - 32px);
     }
     .ctaBtn:active { transform:translateX(-50%) scale(0.99); }
 
     .muted { color:#6b7280; font-size:13px; text-align:center; }
-
-    /* 송금 안내 박스 */
-    .payRow{
-      display:flex; justify-content:center; align-items:center; gap:10px;
-      background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px;
-      padding: 6px 10px; margin:8px auto 0;
-      max-width: 520px;
-    }
-    .payIcon{ width:100px; cursor:pointer; }
-    .copyIcon{ width:140px; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -75,6 +68,7 @@
         </div>
       </div>
 
+      <!-- ✅ 버튼 포함 여부 셀렉터 추가 -->
       <div class="row">
         <div>
           <label>초대장 HTML에 “마음보내기” 버튼</label>
@@ -85,21 +79,7 @@
         </div>
         <div>
           <label>버튼 텍스트</label>
-          <input id="ctaText" type="text" value="마음보내기" />
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>하단 “송금 안내” 섹션</label>
-          <select id="paySectionMode">
-            <option value="on" selected>표시</option>
-            <option value="off">표시안함</option>
-          </select>
-        </div>
-        <div>
-          <label>(설명) 버튼은 항상 “첫 번째 계좌 복사”</label>
-          <input type="text" value="CTA 버튼 클릭 → 첫 번째 유효 계좌정보 복사" disabled />
+          <input id="ctaText" type="text" placeholder="예: 마음보내기" value="마음보내기" />
         </div>
       </div>
 
@@ -130,10 +110,6 @@
         <h2 id="previewMainTitle" style="text-align:center"></h2>
         <p id="previewSubTitle" class="muted"></p>
       </div>
-
-      <p class="muted" style="margin-top:10px;">
-        ※ copy.png / kakaopay.png 파일은 이 페이지와 같은 위치(루트 or public)에 있어야 ZIP에 포함됩니다.
-      </p>
     </div>
   </div>
 
@@ -148,7 +124,7 @@
     const cv = $("cv"), ctx = cv.getContext("2d");
     let mergedDataUrl = "";
 
-    // ✅ 계좌 입력 필드 생성
+    // 계좌 입력 필드 생성
     for (let i = 0; i < 4; i++) {
       const div = document.createElement("div");
       div.classList.add("row");
@@ -156,42 +132,23 @@
         <div><label>받는 사람 이름 ${i+1}</label><input id="accName${i}" type="text" placeholder="예: 민병일" /></div>
         <div><label>은행 이름 ${i+1}</label><input id="accBank${i}" type="text" placeholder="예: 신한" /></div>
         <div><label>계좌번호 ${i+1}</label><input id="accNum${i}" type="text" placeholder="예: 110497044856" /></div>
-        <div style="grid-column:1/3;"><label>카카오페이 송금 URL ${i+1}</label><input id="accUrl${i}" type="url" placeholder="예: https://qr.kakaopay.com/..." /></div>
-      `;
+        <div style="grid-column:1/3;"><label>카카오페이 송금 URL ${i+1}</label><input id="accUrl${i}" type="url" placeholder="예: https://qr.kakaopay.com/..." /></div>`;
       $("accountInputs").appendChild(div);
     }
-
-    function escapeHtml(s='') {
-      return String(s)
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;')
-        .replace(/'/g,'&#39;');
-    }
-    const escapeAttr = escapeHtml;
 
     function fileToImage(fileOrBlob) {
       return new Promise((res, rej) => {
         const r = new FileReader();
-        r.onload = () => {
-          const img = new Image();
-          img.onload = () => res(img);
-          img.onerror = rej;
-          img.src = r.result;
-        };
-        r.onerror = rej;
-        r.readAsDataURL(fileOrBlob);
+        r.onload = () => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = r.result; };
+        r.onerror = rej; r.readAsDataURL(fileOrBlob);
       });
     }
-
     function dataURLToBlob(dataURL) {
       const arr = dataURL.split(','), mime = arr[0].match(/:(.*?);/)[1];
       const bstr = atob(arr[1]); let n = bstr.length; const u8 = new Uint8Array(n);
       while(n--) u8[n] = bstr.charCodeAt(n);
       return new Blob([u8], { type: mime });
     }
-
     function drawCover(srcImg, w, h) {
       const sw = srcImg.width, sh = srcImg.height;
       const sr = sw/sh, dr = w/h;
@@ -203,7 +160,6 @@
       ctx.drawImage(srcImg, sx, sy, sW, sH, 0, 0, w, h);
       return cv.toDataURL('image/jpeg', 0.9);
     }
-
     async function mergeVerticallyOptional(fileTop, fileBottom) {
       if (fileTop && !fileBottom) { const i = await fileToImage(fileTop); return i.src; }
       if (!fileTop && fileBottom) { const i = await fileToImage(fileBottom); return i.src; }
@@ -219,128 +175,59 @@
       return cv.toDataURL('image/png');
     }
 
-    function shouldIncludeCta() { return $("ctaMode").value === "on"; }
-    function shouldShowPaySection() { return $("paySectionMode").value === "on"; }
-
-    function getFirstAccount() {
-      for (let i = 0; i < 4; i++) {
-        const name = $(`accName${i}`).value.trim();
-        const bank = $(`accBank${i}`).value.trim();
-        const num  = $(`accNum${i}`).value.trim();
-        const url  = $(`accUrl${i}`).value.trim();
-        if (name && bank && num) return { name, bank, num, url };
-      }
-      return null;
+    function escapeHtml(s='') {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                      .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+                      .replace(/'/g,'&#39;');
     }
 
-    async function copyToClipboard(text) {
-      try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(text);
-        } else {
-          const ta = document.createElement('textarea');
-          ta.value = text;
-          ta.style.position = 'fixed';
-          ta.style.left = '-9999px';
-          document.body.appendChild(ta);
-          ta.focus();
-          ta.select();
-          document.execCommand('copy');
-          ta.remove();
-        }
-        alert(text + " 복사됨");
-      } catch (e) {
-        alert("복사 실패: 브라우저 권한/보안(https) 확인해주세요.");
-      }
-    }
-
-    // ✅ 계좌 정보 HTML (미리보기/초대장 공용 마크업)
+    // 계좌 정보 HTML 생성
     function renderAccountsToHTML() {
       let html = "";
       for (let i = 0; i < 4; i++) {
         const name = $(`accName${i}`).value.trim();
         const bank = $(`accBank${i}`).value.trim();
-        const num  = $(`accNum${i}`).value.trim();
-        const url  = $(`accUrl${i}`).value.trim();
+        const num = $(`accNum${i}`).value.trim();
+        const url = $(`accUrl${i}`).value.trim();
         if (!name || !bank || !num) continue;
 
-        const copyText = `${bank} ${num} ${name}`;
         html += `
-          <div class="payRow">
-            ${url ? `<img src="./kakaopay.png" class="payIcon" data-url="${escapeAttr(url)}" alt="kakaopay" onerror="this.style.display='none'">` : ``}
-            <img src="./copy.png" class="copyIcon" data-copy="${escapeAttr(copyText)}" alt="copy" onerror="this.style.display='none'">
-          </div>
-        `;
+        <div style="display:flex;justify-content:space-around;align-items:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;margin:8px auto 0;justify-self:center;padding: 5px 7px; gap:10px;">
+            ${url ? `<img src="./kakaopay.png" style="width:100px;cursor:pointer;" onclick="window.open('${escapeHtml(url)}','_blank')">` : ""}
+            <img src="./copy.png" style="width:140px;cursor:pointer;" onclick="navigator.clipboard.writeText('${escapeHtml(num)}').then(()=>alert('${escapeHtml(num)} 복사됨'))">
+        </div>`;
       }
       return html;
     }
 
-    // ✅ 클릭 이벤트(미리보기/초대장 모두 동일한 규칙)
-    function bindPayActions(root) {
-      root.addEventListener('click', async (e) => {
-        const t = e.target;
-        if (!t) return;
-
-        if (t.classList && t.classList.contains('copyIcon')) {
-          const val = t.getAttribute('data-copy') || '';
-          if (val) await copyToClipboard(val);
-        }
-
-        if (t.classList && t.classList.contains('payIcon')) {
-          const url = t.getAttribute('data-url') || '';
-          if (url) window.open(url, '_blank', 'noopener');
-        }
-      });
+    function shouldIncludeCta(accountHTML) {
+      const mode = $("ctaMode").value; // on/off
+      if (mode !== "on") return false;
+      // 송금 섹션이 없으면 버튼은 의미가 없어서 자동 제거
+      return !!accountHTML;
     }
 
-    // ✅ ZIP에 아이콘 넣을 때: 없으면 스킵
-    async function fetchImageBlob(path) {
-      try {
-        const u = new URL(path, location.href).toString();
-        const r = await fetch(u, { cache: 'no-store' });
-        if (!r.ok) return null;
-        const ct = (r.headers.get('content-type') || '').toLowerCase();
-        if (!ct.startsWith('image/')) return null;
-        return await r.blob();
-      } catch {
-        return null;
-      }
-    }
-
-    // ✅ 미리보기
+    // 미리보기
     async function onPreviewClick(){
       const f1 = $("top").files[0], f2 = $("bottom").files[0];
       if (!f1 && !f2) { alert('상단 사진을 선택하세요.'); return; }
-
       mergedDataUrl = await mergeVerticallyOptional(f1, f2);
 
       const hero = $("preview").querySelector(".preview-hero");
       hero.innerHTML = "";
+      const img = new Image(); img.src = mergedDataUrl; hero.appendChild(img);
 
-      const img = new Image();
-      img.src = mergedDataUrl;
-      hero.appendChild(img);
-
-      const includeCta = shouldIncludeCta();
-      const showPaySection = shouldShowPaySection();
+      // 먼저 계좌 렌더링 (버튼 포함 여부 판단에 필요)
+      const accountHTML = renderAccountsToHTML();
+      const includeCta = shouldIncludeCta(accountHTML);
       const ctaText = ($("ctaText").value || "마음보내기").trim();
 
       if (includeCta) {
         const btn = document.createElement("button");
         btn.className = "ctaBtn";
         btn.textContent = ctaText;
-        btn.onclick = async () => {
-          const first = getFirstAccount();
-          if (first) {
-            await copyToClipboard(`${first.bank} ${first.num} ${first.name}`);
-          } else {
-            alert("복사할 첫 번째 계좌 정보를 입력해주세요.");
-          }
-
-          if (showPaySection) {
-            const target = document.getElementById("accountPreview");
-            if (target) target.scrollIntoView({ behavior: "smooth" });
-          }
+        btn.onclick = () => {
+          document.getElementById("accountPreview")?.scrollIntoView({ behavior: "smooth" });
         };
         hero.appendChild(btn);
       }
@@ -350,30 +237,21 @@
 
       const existing = document.getElementById("accountPreview");
       if (existing) existing.remove();
-
-      const accountHTML = renderAccountsToHTML();
-      if (showPaySection && accountHTML.trim().length > 0) {
-        const wrapper = document.createElement("div");
-        wrapper.id = "accountPreview";
-        wrapper.innerHTML = `
-          <h3 style="text-align:center;">송금 안내</h3>
-          <div class="payArea">${accountHTML}</div>
-        `;
-        $("preview").appendChild(wrapper);
-        bindPayActions(wrapper);
-      }
+      const wrapper = document.createElement("div");
+      wrapper.id = "accountPreview";
+      wrapper.innerHTML = accountHTML ? `<h3 style="text-align:center;">송금 안내</h3>${accountHTML}` : "";
+      $("preview").appendChild(wrapper);
 
       $("zipBtn").disabled = false;
     }
 
-    // ✅ ZIP 생성
+    // ZIP 생성
     async function onZipClick(){
       if (!mergedDataUrl) { alert('먼저 미리보기를 해주세요.'); return; }
-
       const ogTitle = $("ogTitle").value || "초대장";
       const ogDesc  = $("ogDesc").value  || "초대합니다.";
 
-      // 썸네일(없으면 merged 기반으로)
+      // 썸네일
       let thumbDataUrl = '';
       const thumbFile = $("thumb").files[0];
       if (thumbFile) {
@@ -384,55 +262,16 @@
         thumbDataUrl = drawCover(mImg, 1200, 630);
       }
 
-      const includeCta = shouldIncludeCta();
-      const showPaySection = shouldShowPaySection();
-
       const accountHTML = renderAccountsToHTML();
-      const hasAccounts = accountHTML.trim().length > 0;
+      const includeCta = shouldIncludeCta(accountHTML);
+      const ctaText = escapeHtml(($("ctaText").value || "마음보내기").trim());
 
-      const first = getFirstAccount();
-      const firstPayText = first ? `${first.bank} ${first.num} ${first.name}` : "";
-      const HAS_PAY_SECTION = (showPaySection && hasAccounts);
-
-      const ctaTextSafe = escapeHtml(($("ctaText").value || "마음보내기").trim());
-      const titleSafe = escapeHtml(ogTitle);
-      const descSafe  = escapeHtml(ogDesc);
-
-      // ✅ 핵심: outer <script> 파서가 죽지 않도록 </script> 문자열을 직접 쓰지 않는다
-      // ✅ 핵심: outer script 파서가 죽지 않게 end-tag 문자열을 직접 쓰지 않는다
-      // (즉, "</scr" + "ipt>"처럼 쪼개서 만들 것)
-      const CLOSE_SCRIPT = "</scr" + "ipt>";
-
-      const ctaCss = includeCta ? `
-  .ctaBtn{
-    position:absolute; left:50%; transform:translateX(-50%);
-    bottom: clamp(10px, 2.4vw, 18px);
-    font-size: clamp(14px, 4.2vw, 18px);
-    padding: clamp(10px, 3.0vw, 13px) clamp(22px, 8.5vw, 40px);
-    border-radius:999px; border:none; background:#ff5a3c; color:#fff; font-weight:800;
-    box-shadow:0 10px 24px rgba(255,90,60,.30); cursor:pointer; letter-spacing:-0.3px;
-    white-space:nowrap; max-width:calc(100% - 32px);
-  }` : '';
-
-
-      const ctaBtnHtml = includeCta
-        ? `<button class="ctaBtn" type="button" id="ctaBtn">${ctaTextSafe}</button>`
-        : '';
-
-      const payHtml = HAS_PAY_SECTION ? `
-  <div id="pay" style="padding:16px;">
-    <h3 style="text-align:center;">송금 안내</h3>
-    <div id="payArea">${accountHTML}</div>
-  </div>` : '';
-
-      const inviteHtml =
-`<!doctype html><html lang="ko"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta property="og:title" content="${titleSafe}">
-<meta property="og:description" content="${descSafe}">
+      const inviteHtml = `<!doctype html><html lang="ko"><head>
+<meta property="og:title" content="${escapeHtml(ogTitle)}">
+<meta property="og:description" content="${escapeHtml(ogDesc)}">
 <meta property="og:image" content="./thumb_1200x630.jpg">
-<title>${titleSafe}</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(ogTitle)}</title>
 <style>
   html{ scroll-behavior:smooth; }
   body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;background:#fff7f7;margin:0;padding:16px}
@@ -440,79 +279,35 @@
   .card{background:#fff;border:1px solid #eee;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.06);overflow:hidden}
   .heroWrap{ position:relative; }
   .hero{width:100%;display:block}
-  ${ctaCss}
-
-  .payRow{
-    display:flex; justify-content:center; align-items:center; gap:10px;
-    background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px;
-    padding: 6px 10px; margin:8px auto 0; max-width: 520px;
-  }
-  .payIcon{ width:100px; cursor:pointer; }
-  .copyIcon{ width:140px; cursor:pointer; }
+  ${includeCta ? `.ctaBtn{
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    bottom:26px;
+    padding:14px 46px;
+    border-radius:999px;
+    border:none;
+    background:#ff5a3c;
+    color:#fff;
+    font-weight:800;
+    font-size:20px;
+    box-shadow:0 10px 24px rgba(255,90,60,.35);
+    cursor:pointer;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    letter-spacing:-0.3px;
+  }` : ``}
 </style>
 </head><body>
 <div class="wrap"><div class="card">
   <div class="heroWrap">
-    <img class="hero" src="./merged.png" alt="${titleSafe}">
-    ${ctaBtnHtml}
+    <img class="hero" src="./merged.png" alt="${escapeHtml(ogTitle)}">
+    ${includeCta ? `<a class="ctaBtn" href="#pay">${ctaText}</a>` : ``}
   </div>
-  ${payHtml}
+  ${accountHTML ? `<div id="pay" style="padding:16px;"><h3 style="text-align:center;">송금 안내</h3>${accountHTML}</div>` : ""}
 </div></div>
-
-<script>
-(function(){
-  const FIRST_PAY_TEXT = ${JSON.stringify(firstPayText)};
-  const HAS_PAY_SECTION = ${JSON.stringify(HAS_PAY_SECTION)};
-
-  async function copyToClipboard(text){
-    try{
-      if (navigator.clipboard && window.isSecureContext){
-        await navigator.clipboard.writeText(text);
-      } else {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position='fixed';
-        ta.style.left='-9999px';
-        document.body.appendChild(ta);
-        ta.focus(); ta.select();
-        document.execCommand('copy');
-        ta.remove();
-      }
-      alert(text + " 복사됨");
-    }catch(e){
-      alert("복사 실패: 브라우저 권한/보안(https) 확인해주세요.");
-    }
-  }
-
-  document.addEventListener('click', function(e){
-    const t = e.target;
-    if (!t) return;
-
-    if (t.classList && t.classList.contains('copyIcon')){
-      const val = t.getAttribute('data-copy') || '';
-      if (val) copyToClipboard(val);
-    }
-    if (t.classList && t.classList.contains('payIcon')){
-      const url = t.getAttribute('data-url') || '';
-      if (url) window.open(url,'_blank','noopener');
-    }
-  });
-
-  const cta = document.getElementById('ctaBtn');
-  if (cta){
-    cta.addEventListener('click', function(){
-      if (FIRST_PAY_TEXT) copyToClipboard(FIRST_PAY_TEXT);
-      else alert("복사할 첫 번째 계좌 정보가 없습니다.");
-
-      if (HAS_PAY_SECTION){
-        const el = document.getElementById('pay');
-        if (el) el.scrollIntoView({behavior:'smooth'});
-      }
-    });
-  }
-})();
-${CLOSE_SCRIPT}
-
 </body></html>`;
 
       const zip = new JSZip();
@@ -520,11 +315,11 @@ ${CLOSE_SCRIPT}
       zip.file("merged.png", dataURLToBlob(mergedDataUrl));
       zip.file("thumb_1200x630.jpg", dataURLToBlob(thumbDataUrl));
 
-      // 아이콘(있으면 포함, 없으면 무시)
-      const copyImg = await fetchImageBlob("copy.png");
-      const payImg  = await fetchImageBlob("kakaopay.png");
-      if (copyImg) zip.file("copy.png", copyImg);
-      if (payImg)  zip.file("kakaopay.png", payImg);
+      // 버튼 이미지도 ZIP에 포함
+      const copyImg = await fetch("./copy.png").then(r => r.blob());
+      const payImg = await fetch("./kakaopay.png").then(r => r.blob());
+      zip.file("copy.png", copyImg);
+      zip.file("kakaopay.png", payImg);
 
       const blob = await zip.generateAsync({ type: 'blob' });
       saveAs(blob, `${ogTitle}_초대장.zip`);
