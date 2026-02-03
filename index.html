@@ -399,7 +399,9 @@
       const descSafe  = escapeHtml(ogDesc);
 
       // ✅ 핵심: outer <script> 파서가 죽지 않도록 </script> 문자열을 직접 쓰지 않는다
-      const CLOSE_SCRIPT = '</scr' + 'ipt>';
+      // ✅ 핵심: outer script 파서가 죽지 않게 end-tag 문자열을 직접 쓰지 않는다
+      // (즉, "</scr" + "ipt>"처럼 쪼개서 만들 것)
+      const CLOSE_SCRIPT = "</scr" + "ipt>";
 
       const ctaCss = includeCta ? `
   .ctaBtn{
@@ -411,6 +413,7 @@
     box-shadow:0 10px 24px rgba(255,90,60,.30); cursor:pointer; letter-spacing:-0.3px;
     white-space:nowrap; max-width:calc(100% - 32px);
   }` : '';
+
 
       const ctaBtnHtml = includeCta
         ? `<button class="ctaBtn" type="button" id="ctaBtn">${ctaTextSafe}</button>`
