@@ -29,20 +29,20 @@
     .preview-hero { width:100%; height:420px; position:relative; border-radius:12px; overflow:hidden; background:#fff; }
     .preview-hero img { width:100%; height:100%; object-fit:cover; display:block; }
 
-    /* ✅ 버튼 스타일 */
+    /* ✅ 버튼 스타일 (사이즈 ↓) */
     .ctaBtn{
       position:absolute;
       left:50%;
       transform:translateX(-50%);
-      bottom:26px;              /* 버튼 위치 조절 */
-      padding:14px 46px;
+      bottom:18px;
+      padding:10px 34px;
       border-radius:999px;
       border:none;
       background:#ff5a3c;
       color:#fff;
       font-weight:800;
-      font-size:20px;
-      box-shadow:0 10px 24px rgba(255,90,60,.35);
+      font-size:16px;
+      box-shadow:0 8px 18px rgba(255,90,60,.28);
       cursor:pointer;
       letter-spacing:-0.3px;
     }
@@ -68,8 +68,15 @@
         </div>
       </div>
 
-      <!-- ✅ 버튼 포함 여부 셀렉터 추가 -->
+      <!-- ✅ 송금 섹션 표시/숨김 + 버튼 포함 여부 -->
       <div class="row">
+        <div>
+          <label>하단 “송금 안내” 섹션</label>
+          <select id="payMode">
+            <option value="on" selected>표시</option>
+            <option value="off">숨김</option>
+          </select>
+        </div>
         <div>
           <label>초대장 HTML에 “마음보내기” 버튼</label>
           <select id="ctaMode">
@@ -77,9 +84,16 @@
             <option value="off">미포함</option>
           </select>
         </div>
+      </div>
+
+      <div class="row">
         <div>
           <label>버튼 텍스트</label>
           <input id="ctaText" type="text" placeholder="예: 마음보내기" value="마음보내기" />
+        </div>
+        <div>
+          <label style="opacity:.0">.</label>
+          <div class="muted" style="text-align:left;margin-top:8px;">※ 송금 섹션이 숨김이거나 계좌 입력이 없으면 버튼은 자동으로 제거됩니다.</div>
         </div>
       </div>
 
@@ -180,6 +194,14 @@
                       .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
                       .replace(/'/g,'&#39;');
     }
+    // ✅ onclick JS 문자열 안전하게 (따옴표/백슬래시)
+    function escapeJsString(s='') {
+      return String(s)
+        .replace(/\\/g,'\\\\')
+        .replace(/'/g,"\\'")
+        .replace(/\r/g,'')
+        .replace(/\n/g,'\\n');
+    }
 
     // 계좌 정보 HTML 생성
     function renderAccountsToHTML() {
@@ -193,18 +215,25 @@
 
         html += `
         <div style="display:flex;justify-content:space-around;align-items:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;margin:8px auto 0;justify-self:center;padding: 5px 7px; gap:10px;">
-            ${url ? `<img src="./kakaopay.png" style="width:100px;cursor:pointer;" onclick="window.open('${escapeHtml(url)}','_blank')">` : ""}
-            <img src="./copy.png" style="width:140px;cursor:pointer;" onclick="navigator.clipboard.writeText('${escapeHtml(num)}').then(()=>alert('${escapeHtml(num)} 복사됨'))">
+            ${url ? `<img src="./kakaopay.png" style="width:100px;cursor:pointer;" onclick="window.open('${escapeJsString(url)}','_blank')">` : ""}
+            <img src="./copy.png" style="width:140px;cursor:pointer;" onclick="navigator.clipboard.writeText('${escapeJsString(num)}').then(()=>alert('${escapeJsString(num)} 복사됨'))">
         </div>`;
       }
       return html;
     }
 
-    function shouldIncludeCta(accountHTML) {
+    // ✅ 송금 섹션 표시 여부 (사용자가 on이고, 실제 계좌가 있을 때만)
+    function shouldShowPaySection(accountHTML) {
+      const mode = $("payMode").value; // on/off
+      if (mode !== "on") return false;
+      return !!accountHTML;
+    }
+
+    // ✅ CTA 버튼 포함 여부 (CTA on + 송금섹션이 실제로 표시될 때만)
+    function shouldIncludeCta(showPay) {
       const mode = $("ctaMode").value; // on/off
       if (mode !== "on") return false;
-      // 송금 섹션이 없으면 버튼은 의미가 없어서 자동 제거
-      return !!accountHTML;
+      return showPay;
     }
 
     // 미리보기
@@ -217,9 +246,10 @@
       hero.innerHTML = "";
       const img = new Image(); img.src = mergedDataUrl; hero.appendChild(img);
 
-      // 먼저 계좌 렌더링 (버튼 포함 여부 판단에 필요)
+      // 계좌 렌더링
       const accountHTML = renderAccountsToHTML();
-      const includeCta = shouldIncludeCta(accountHTML);
+      const showPay = shouldShowPaySection(accountHTML);
+      const includeCta = shouldIncludeCta(showPay);
       const ctaText = ($("ctaText").value || "마음보내기").trim();
 
       if (includeCta) {
@@ -237,9 +267,12 @@
 
       const existing = document.getElementById("accountPreview");
       if (existing) existing.remove();
+
       const wrapper = document.createElement("div");
       wrapper.id = "accountPreview";
-      wrapper.innerHTML = accountHTML ? `<h3 style="text-align:center;">송금 안내</h3>${accountHTML}` : "";
+      wrapper.innerHTML = showPay
+        ? `<h3 style="text-align:center;">송금 안내</h3>${accountHTML}`
+        : ``;
       $("preview").appendChild(wrapper);
 
       $("zipBtn").disabled = false;
@@ -263,7 +296,8 @@
       }
 
       const accountHTML = renderAccountsToHTML();
-      const includeCta = shouldIncludeCta(accountHTML);
+      const showPay = shouldShowPaySection(accountHTML);
+      const includeCta = shouldIncludeCta(showPay);
       const ctaText = escapeHtml(($("ctaText").value || "마음보내기").trim());
 
       const inviteHtml = `<!doctype html><html lang="ko"><head>
@@ -283,15 +317,15 @@
     position:absolute;
     left:50%;
     transform:translateX(-50%);
-    bottom:26px;
-    padding:14px 46px;
+    bottom:18px;
+    padding:10px 34px;
     border-radius:999px;
     border:none;
     background:#ff5a3c;
     color:#fff;
     font-weight:800;
-    font-size:20px;
-    box-shadow:0 10px 24px rgba(255,90,60,.35);
+    font-size:16px;
+    box-shadow:0 8px 18px rgba(255,90,60,.28);
     cursor:pointer;
     text-decoration:none;
     display:inline-flex;
@@ -306,7 +340,7 @@
     <img class="hero" src="./merged.png" alt="${escapeHtml(ogTitle)}">
     ${includeCta ? `<a class="ctaBtn" href="#pay">${ctaText}</a>` : ``}
   </div>
-  ${accountHTML ? `<div id="pay" style="padding:16px;"><h3 style="text-align:center;">송금 안내</h3>${accountHTML}</div>` : ""}
+  ${showPay ? `<div id="pay" style="padding:16px;"><h3 style="text-align:center;">송금 안내</h3>${accountHTML}</div>` : ""}
 </div></div>
 </body></html>`;
 
@@ -315,7 +349,7 @@
       zip.file("merged.png", dataURLToBlob(mergedDataUrl));
       zip.file("thumb_1200x630.jpg", dataURLToBlob(thumbDataUrl));
 
-      // 버튼 이미지도 ZIP에 포함
+      // 버튼 이미지도 ZIP에 포함 (같은 폴더에 copy.png / kakaopay.png 있어야 fetch 성공)
       const copyImg = await fetch("./copy.png").then(r => r.blob());
       const payImg = await fetch("./kakaopay.png").then(r => r.blob());
       zip.file("copy.png", copyImg);
