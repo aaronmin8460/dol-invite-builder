@@ -48,14 +48,81 @@
     .muted { color:#6b7280; font-size:13px; text-align:center; }
 
     /* 송금 안내 박스(미리보기 + 초대장 공용) */
-    .payRow{
-      display:flex; justify-content:center; align-items:center; gap:10px;
-      background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px;
-      padding: 6px 10px; margin:8px auto 0;
-      max-width: 520px;
+    .payArea{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin:0 auto;
+      max-width:520px;
     }
-    .payIcon{ width:100px; cursor:pointer; }
-    .copyIcon{ width:140px; cursor:pointer; }
+    .payCard{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:14px;
+      background:linear-gradient(180deg, #fff 0%, #fff8f6 100%);
+      border:1px solid #f1d8d1;
+      border-radius:16px;
+      padding:14px 16px;
+      box-shadow:0 8px 20px rgba(0,0,0,.04);
+    }
+    .payText{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .payBank{ color:#7c5e57; font-size:13px; font-weight:700; }
+    .payNumber{
+      color:#111827;
+      font-size:clamp(18px, 4.4vw, 24px);
+      font-weight:800;
+      letter-spacing:-0.3px;
+      word-break:break-all;
+    }
+    .payOwner{ color:#4b5563; font-size:14px; font-weight:600; }
+    .payActions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      justify-content:flex-end;
+      flex-shrink:0;
+    }
+    .payBtn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+      color:#111827;
+      font-size:13px;
+      font-weight:700;
+      line-height:1;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .payBtnPrimary{ background:#111827; border-color:#111827; color:#fff; }
+    .payBtnSecondary{ background:#fff4cc; border-color:#f5d973; color:#6b4f00; }
+    .payBtnIcon{
+      width:18px;
+      height:18px;
+      object-fit:contain;
+      flex:none;
+    }
+    @media (max-width: 560px) {
+      .payCard{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .payActions{
+        justify-content:stretch;
+        flex-shrink:1;
+      }
+      .payBtn{ width:100%; }
+    }
   </style>
 </head>
 <body>
@@ -218,15 +285,20 @@
       return cv.toDataURL('image/png');
     }
 
-    function getFirstAccount() {
+    function getValidAccounts() {
+      const accounts = [];
       for (let i = 0; i < 4; i++) {
         const name = $(`accName${i}`).value.trim();
         const bank = $(`accBank${i}`).value.trim();
         const num  = $(`accNum${i}`).value.trim();
         const url  = $(`accUrl${i}`).value.trim();
-        if (name && bank && num) return { name, bank, num, url };
+        if (name && bank && num) accounts.push({ name, bank, num, url, copyText: `${bank} ${num} ${name}` });
       }
-      return null;
+      return accounts;
+    }
+
+    function getFirstAccount() {
+      return getValidAccounts()[0] || null;
     }
 
     async function copyToClipboard(text) {
@@ -253,39 +325,55 @@
     function bindPayActions(root) {
       root.addEventListener('click', async (e) => {
         const t = e.target;
-        if (!t) return;
+        if (!t || !t.closest) return;
 
-        if (t.classList && t.classList.contains('copyIcon')) {
-          const val = t.getAttribute('data-copy') || '';
+        const copyBtn = t.closest('.payBtn[data-copy]');
+        if (copyBtn && root.contains(copyBtn)) {
+          const val = copyBtn.getAttribute('data-copy') || '';
           if (val) await copyToClipboard(val);
+          return;
         }
 
-        if (t.classList && t.classList.contains('payIcon')) {
-          const url = t.getAttribute('data-url') || '';
+        const payBtn = t.closest('.payBtn[data-url]');
+        if (payBtn && root.contains(payBtn)) {
+          const url = payBtn.getAttribute('data-url') || '';
           if (url) window.open(url, '_blank', 'noopener');
         }
       });
     }
 
-    // 계좌 정보 HTML (아이콘 클릭)
-    function renderAccountsToHTML() {
-      let html = "";
-      for (let i = 0; i < 4; i++) {
-        const name = $(`accName${i}`).value.trim();
-        const bank = $(`accBank${i}`).value.trim();
-        const num  = $(`accNum${i}`).value.trim();
-        const url  = $(`accUrl${i}`).value.trim();
-        if (!name || !bank || !num) continue;
-
-        const copyText = `${bank} ${num} ${name}`;
-        html += `
-          <div class="payRow">
-            ${url ? `<img src="./kakaopay.png" class="payIcon" data-url="${escapeHtml(url)}" alt="kakaopay" onerror="this.style.display='none'">` : ``}
-            <img src="./copy.png" class="copyIcon" data-copy="${escapeHtml(copyText)}" alt="copy" onerror="this.style.display='none'">
+    function renderAccountsToHTML(accounts = getValidAccounts()) {
+      return accounts.map(({ name, bank, num, url, copyText }) => `
+        <div class="payCard">
+          <div class="payText">
+            <div class="payBank">${escapeHtml(bank)}</div>
+            <div class="payNumber">${escapeHtml(num)}</div>
+            <div class="payOwner">예금주 ${escapeHtml(name)}</div>
           </div>
-        `;
-      }
-      return html;
+          <div class="payActions">
+            ${url ? `
+              <button
+                type="button"
+                class="payBtn payBtnSecondary"
+                data-url="${escapeHtml(url)}"
+                aria-label="${escapeHtml(`${bank} ${num} ${name} 카카오페이 송금`)}"
+              >
+                <img src="./kakaopay.png" class="payBtnIcon" alt="" aria-hidden="true" onerror="this.remove()">
+                <span>카카오페이 송금</span>
+              </button>
+            ` : ``}
+            <button
+              type="button"
+              class="payBtn payBtnPrimary"
+              data-copy="${escapeHtml(copyText)}"
+              aria-label="${escapeHtml(`${bank} ${num} ${name} 계좌 복사`)}"
+            >
+              <img src="./copy.png" class="payBtnIcon" alt="" aria-hidden="true" onerror="this.remove()">
+              <span>계좌 복사</span>
+            </button>
+          </div>
+        </div>
+      `).join("");
     }
 
     async function fetchImageBlob(path) {
@@ -342,14 +430,15 @@
       const existing = document.getElementById("accountPreview");
       if (existing) existing.remove();
 
-      const accountHTML = renderAccountsToHTML();
+      const accounts = getValidAccounts();
+      const accountHTML = renderAccountsToHTML(accounts);
 
       // ✅ 송금 섹션은 표시 + 계좌 있을 때만
-      if (showPaySection && accountHTML.trim().length > 0) {
+      if (showPaySection && accounts.length > 0) {
         const wrapper = document.createElement("div");
         wrapper.id = "accountPreview";
         wrapper.innerHTML = `
-          <h3 style="text-align:center;">송금 안내</h3>
+          <h3 style="text-align:center;margin:0 0 10px;">송금 안내</h3>
           <div class="payArea">${accountHTML}</div>
         `;
         $("preview").appendChild(wrapper);
@@ -376,8 +465,9 @@
         thumbDataUrl = drawCover(mImg, 1200, 630);
       }
 
-      const accountHTML = renderAccountsToHTML();
-      const hasAccounts = accountHTML.trim().length > 0;
+      const accounts = getValidAccounts();
+      const accountHTML = renderAccountsToHTML(accounts);
+      const hasAccounts = accounts.length > 0;
 
       const includeCta = shouldIncludeCta();
       const showPaySection = shouldShowPaySection();
@@ -385,7 +475,7 @@
 
       const ctaText = escapeHtml(($("ctaText").value || "마음보내기").trim());
 
-      const first = getFirstAccount();
+      const first = accounts[0] || null;
       const firstPayText = first ? `${first.bank} ${first.num} ${first.name}` : "";
 
       // ✅ 초대장 HTML
@@ -413,13 +503,81 @@
     white-space:nowrap; max-width:calc(100% - 32px);
   }` : ``}
 
-  .payRow{
-    display:flex; justify-content:center; align-items:center; gap:10px;
-    background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px;
-    padding: 6px 10px; margin:8px auto 0; max-width: 520px;
+  .payArea{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin:0 auto;
+    max-width:520px;
   }
-  .payIcon{ width:100px; cursor:pointer; }
-  .copyIcon{ width:140px; cursor:pointer; }
+  .payCard{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:14px;
+    background:linear-gradient(180deg, #fff 0%, #fff8f6 100%);
+    border:1px solid #f1d8d1;
+    border-radius:16px;
+    padding:14px 16px;
+    box-shadow:0 8px 20px rgba(0,0,0,.04);
+  }
+  .payText{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .payBank{ color:#7c5e57; font-size:13px; font-weight:700; }
+  .payNumber{
+    color:#111827;
+    font-size:clamp(18px, 4.4vw, 24px);
+    font-weight:800;
+    letter-spacing:-0.3px;
+    word-break:break-all;
+  }
+  .payOwner{ color:#4b5563; font-size:14px; font-weight:600; }
+  .payActions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:flex-end;
+    flex-shrink:0;
+  }
+  .payBtn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    padding:10px 12px;
+    border-radius:999px;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    color:#111827;
+    font-size:13px;
+    font-weight:700;
+    line-height:1;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .payBtnPrimary{ background:#111827; border-color:#111827; color:#fff; }
+  .payBtnSecondary{ background:#fff4cc; border-color:#f5d973; color:#6b4f00; }
+  .payBtnIcon{
+    width:18px;
+    height:18px;
+    object-fit:contain;
+    flex:none;
+  }
+  @media (max-width:560px){
+    .payCard{
+      flex-direction:column;
+      align-items:stretch;
+    }
+    .payActions{
+      justify-content:stretch;
+      flex-shrink:1;
+    }
+    .payBtn{ width:100%; }
+  }
 </style>
 </head><body>
 <div class="wrap"><div class="card">
@@ -430,9 +588,9 @@
   </div>
 
   ${HAS_PAY_SECTION ? `
-    <div id="pay" style="padding:16px;">
-      <h3 style="text-align:center;">송금 안내</h3>
-      <div id="payArea">${accountHTML}</div>
+      <div id="pay" style="padding:16px;">
+      <h3 style="text-align:center;margin:0 0 10px;">송금 안내</h3>
+      <div id="payArea" class="payArea">${accountHTML}</div>
     </div>
   ` : ``}
 
@@ -462,14 +620,18 @@
 
   document.addEventListener('click', function(e){
     const t = e.target;
-    if (!t) return;
+    if (!t || !t.closest) return;
 
-    if (t.classList && t.classList.contains('copyIcon')){
-      const val = t.getAttribute('data-copy') || '';
+    const copyBtn = t.closest('.payBtn[data-copy]');
+    if (copyBtn){
+      const val = copyBtn.getAttribute('data-copy') || '';
       if (val) copyToClipboard(val);
+      return;
     }
-    if (t.classList && t.classList.contains('payIcon')){
-      const url = t.getAttribute('data-url') || '';
+
+    const payBtn = t.closest('.payBtn[data-url]');
+    if (payBtn){
+      const url = payBtn.getAttribute('data-url') || '';
       if (url) window.open(url,'_blank','noopener');
     }
   });
