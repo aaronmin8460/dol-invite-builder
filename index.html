@@ -368,7 +368,6 @@
               data-copy="${escapeHtml(copyText)}"
               aria-label="${escapeHtml(`${bank} ${num} ${name} 계좌 복사`)}"
             >
-              <img src="./copy.png" class="payBtnIcon" alt="" aria-hidden="true" onerror="this.remove()">
               <span>계좌 복사</span>
             </button>
           </div>
@@ -438,7 +437,7 @@
         const wrapper = document.createElement("div");
         wrapper.id = "accountPreview";
         wrapper.innerHTML = `
-          <h3 style="text-align:center;margin:0 0 10px;">송금 안내</h3>
+          <h3 style="text-align:center;margin:0 0 10px;">마음 전하는 곳</h3>
           <div class="payArea">${accountHTML}</div>
         `;
         $("preview").appendChild(wrapper);
